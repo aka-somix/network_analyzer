@@ -400,13 +400,28 @@ pub mod sniffer {
                         };
                     });
 
+                    //TODO QUI
+                    /*
+                    thread::spawn(move || {
+                        if self.get_time_interval() == 0 {
+                            thread::sleep(Duration::from_secs(self.get_time_interval()));
+                            let mut status = tuple.0.lock().unwrap();
+                            match *status {
+                                Status::Running => {
+                                    self.set_status(Status::Idle);
+                                }
+                                _ => { println!("Sniffing process already stopped.")
+                                }
+                            }
+                        }
+                    });
+                    */
+
                     Ok(())
                 },
                 _ => {return Err(NetworkAnalyzerError::UserWarning("Another sniffing process is already running.".to_string()))}
             }
         }
-
-        //run with interval TODO
 
         fn print_title(device: &Device) -> String {
             let mut title = "Device name: ".to_string();
@@ -444,7 +459,7 @@ pub mod sniffer {
         }
 
         pub fn generate_report(&self) -> Result<String, NetworkAnalyzerError> {
-            //let status = self.get_status(); TODO il problema è qui
+            //let status = self.get_status(); TODO QUI
             let status = Running; //TODO inserito giusto per poter fare delle prove sul resto
             match &status {
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
@@ -456,23 +471,25 @@ pub mod sniffer {
                         println!("PROVA GENERAZIONE P.1");
                         let write;
                         let body;
-                        if self.get_time_interval() == 0 {
-                            println!("PROVA GENERAZIONE P.2");
-                            let mut file = match OpenOptions::new().write(true).open(self.get_file().unwrap()) {
-                                Ok(file) => file,
-                                Err(_) => return Err(NetworkAnalyzerError::UserError("Cannot open file.".to_string()))
-                            };
-                            match file.rewind() { //porta la testina all'inizio del file
-                                Ok(_) => (),
-                                Err(_) =>  return Err(NetworkAnalyzerError::UserError("Error during rewind operation.".to_string()))
-                            };
+                        //if self.get_time_interval() == 0 {
+                        println!("PROVA GENERAZIONE P.2");
+                        let mut file = match OpenOptions::new().write(true).open(self.get_file().unwrap()) {
+                            Ok(file) => file,
+                            Err(_) => return Err(NetworkAnalyzerError::UserError("Cannot open file.".to_string()))
+                        };
+                        match file.rewind() { //porta la testina all'inizio del file
+                            Ok(_) => (),
+                            Err(_) =>  return Err(NetworkAnalyzerError::UserError("Error during rewind operation.".to_string()))
+                        };
 
-                            let mut title = Sniffer::print_title(&self.device.as_ref().unwrap().clone());
-                            body = Sniffer::print_table(self.get_hashmap().clone());
-                            title.push_str(body.as_str());
+                        let mut title = Sniffer::print_title(&self.device.as_ref().unwrap().clone());
+                        body = Sniffer::print_table(self.get_hashmap().clone());
+                        title.push_str(body.as_str());
 
-                            write = file.write(title.as_bytes());
-                        } else {
+                        write = file.write(title.as_bytes());
+                        //}
+                            /*
+                        else {
                             println!("PROVA GENERAZIONE P.2 - CON INTERVAL");
                             let mut file = match OpenOptions::new().append(true).open(self.get_file().unwrap()) {
                                 Ok(file) => file,
@@ -482,9 +499,10 @@ pub mod sniffer {
                             body = Sniffer::print_table(self.get_hashmap().clone());
                             write = file.write(body.as_bytes());
                         }
+                             */
                         return match write {
                             Ok(_) => {
-                                self.set_status(Status::Idle);
+                                self.set_status(Status::Idle); //TODO QUI TU DICI CHE CONVIENE METTERLO QUA O ALL'INIZIO QUANDO INIZIA A GENERARE I REPORT?
                                 println!("STATUS IDLE SET");
                                 Ok("The report was saved and the scanning is stopped.".to_string())
                             },
