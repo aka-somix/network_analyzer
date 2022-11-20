@@ -6,6 +6,7 @@ pub mod sniffer {
     use libc;
     use std::collections::HashMap;
     use std::{fmt, thread};
+    use std::error::Error;
     use std::fmt::{Display, Formatter};
     use std::fs::{File, OpenOptions};
     use std::io::{Seek, Write};
@@ -21,9 +22,9 @@ pub mod sniffer {
     use pktparse::ipv6::{IPv6Header, parse_ipv6_header};
     use pktparse::tcp::parse_tcp_header;
     use pktparse::udp::parse_udp_header;
-    use prettytable::{Cell, row, Row, Table};
+    use prettytable::{Cell, csv, row, Row, Table};
     use chrono::{Local, TimeZone};
-    use crate::sniffer::Status::Running;
+    use serde::Serialize;
 
     #[derive(Debug, Clone)]
     pub enum NetworkAnalyzerError {
@@ -458,9 +459,10 @@ pub mod sniffer {
             return res
         }
 
+        //generate txt and csv files
         pub fn generate_report(&self) -> Result<String, NetworkAnalyzerError> {
             //let status = self.get_status(); TODO QUI
-            let status = Running; //TODO inserito giusto per poter fare delle prove sul resto
+            let status = Status::Running; //TODO inserito giusto per poter fare delle prove sul resto
             match &status {
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
                 Status::Idle => { Err(NetworkAnalyzerError::UserWarning("The process is already stopped.".to_string())) },
@@ -502,6 +504,7 @@ pub mod sniffer {
                              */
                         return match write {
                             Ok(_) => {
+                                Sniffer::generate_csv(self.get_hashmap().clone());
                                 self.set_status(Status::Idle); //TODO QUI TU DICI CHE CONVIENE METTERLO QUA O ALL'INIZIO QUANDO INIZIA A GENERARE I REPORT?
                                 println!("STATUS IDLE SET");
                                 Ok("The report was saved and the scanning is stopped.".to_string())
@@ -512,6 +515,36 @@ pub mod sniffer {
                 },
             }
         }
+
+        pub fn generate_csv(hm: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>>) -> Result<(), Box<dyn Error>> {
+            println!("ciao");
+            let file_path = "report.csv";
+            println!("ciao");
+            let mut wtr = csv::Writer::from_path(file_path)?;
+            for (key, value) in hm.lock().unwrap().iter() {
+                let row = Record {address: key.0.to_string(), port : key.1, protocol: value.0.to_string(),
+                                byte_transmitted : value.1, direction : value.2.to_string(), start : value.3, end : value.4 };
+                /*
+                wtr.write_record(&[key.0.as_str(), key.1.to_string().as_str(), value.0.to_string().as_str(), value.1.to_string().as_str(),
+                    value.2.to_string().as_str(), value.3.to_string().as_str(), value.4.to_string().as_str() ])?;
+                 */
+                wtr.serialize(row)?;
+            }
+            wtr.flush()?;
+            Ok(())
+        }
+    }
+
+    #[derive(Serialize)]
+    #[serde(rename_all = "PascalCase")]
+    struct Record {
+        address: String,
+        port: u16,
+        protocol: String,
+        byte_transmitted: usize,
+        direction: String,
+        start: u64,
+        end: u64
     }
 
     }
