@@ -3,6 +3,7 @@
 extern crate core;
 extern crate prettytable;
 pub mod sniffer {
+    use libc;
     use std::collections::HashMap;
     use std::{fmt, thread};
     use std::fmt::{Display, Formatter};
@@ -21,10 +22,9 @@ pub mod sniffer {
     use pktparse::tcp::parse_tcp_header;
     use pktparse::udp::parse_udp_header;
     use prettytable::{Cell, row, Row, Table};
-    use chrono::{Local};
+    use chrono::{Local, TimeZone};
+    use crate::sniffer::Status::Running;
 
-
-    //ERRORE CUSTOMIZZATO
     #[derive(Debug, Clone)]
     pub enum NetworkAnalyzerError {
         PacketDecodeError(String),
@@ -44,7 +44,6 @@ pub mod sniffer {
         }
     }
 
-    //ENUM CHE SERVE PER DIRE SE IL PACCHETTO E' STATO INVIATO O RICEVUTO
     #[derive(Debug, Clone, PartialEq)]
     pub enum Direction {
         Received,
@@ -56,20 +55,6 @@ pub mod sniffer {
             write!(f, "{:?}", self)
         }
     }
-    /*
-    #[derive(Debug, Clone, PartialEq)]
-    struct PacketToSend <'a>{
-        data: &'a [u8]
-    }
-
-    impl <'a> PacketToSend<'a> {
-        pub fn new(data: &'a[u8]) -> Self {
-            PacketToSend{
-                data
-            }
-        }
-    }
-     */
 
     //we need it because IPProtocol doesn't have the trait Display or ToString
     #[derive(Debug, Clone)]
@@ -91,12 +76,13 @@ pub mod sniffer {
         port: u16,
         protocol: Protocol,
         byte_transmitted: usize,
-        direction:Direction
+        direction: Direction,
+        timestamp: u64
     }
 
     impl PacketResult {
-        pub fn new(address: String, port: u16, protocol: Protocol, byte_transmitted: usize, direction : Direction) -> Self {
-            PacketResult { address, port, protocol, byte_transmitted, direction}
+        pub fn new(address: String, port: u16, protocol: Protocol, byte_transmitted: usize, direction : Direction, ts: libc::timeval) -> Self {
+            PacketResult { address, port, protocol, byte_transmitted, direction, timestamp: {(ts.tv_sec as u64) * 1000000 + (ts.tv_usec as u64)} }
         }
 
         pub fn get_address(&self) -> String { return self.address.clone() }
@@ -104,6 +90,7 @@ pub mod sniffer {
         pub fn get_protocol(&self) -> Protocol { return self.protocol.clone() }
         pub fn get_byte_transmitted(&self) -> usize { return self.byte_transmitted }
         pub fn get_direction(&self) -> Direction { return self.direction.clone() }
+        pub fn get_timestamp(&self) -> u64 {return self.timestamp }
     }
 
     fn get_direction_ipv4(header: IPv4Header, device: Device) -> Direction {
@@ -138,7 +125,7 @@ pub mod sniffer {
                                       address = ipv4_header.dest_addr.to_string();
                                       port = udp_header.dest_port;
                                   }
-                                  Ok(PacketResult::new(address, port, Protocol::UDP, byte_transmitted, direction))
+                                  Ok(PacketResult::new(address, port, Protocol::UDP, byte_transmitted, direction, packet.header.ts))
                               } else {
                                   Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing udp packet".parse().unwrap()))
                               }
@@ -155,7 +142,7 @@ pub mod sniffer {
                                       address = ipv4_header.dest_addr.to_string();
                                       port = tcp_header.dest_port;
                                   }
-                                  Ok(PacketResult::new(address, port, Protocol::TCP, byte_transmitted, direction))
+                                  Ok(PacketResult::new(address, port, Protocol::TCP, byte_transmitted, direction, packet.header.ts))
                               } else {
                                   Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing tcp packet".parse().unwrap()))
                               }
@@ -183,7 +170,7 @@ pub mod sniffer {
                                        address = ipv6_header.dest_addr.to_string();
                                        port = udp_header.dest_port;
                                    }
-                                   Ok(PacketResult::new(address, port, Protocol::UDP, byte_transmitted, direction))
+                                   Ok(PacketResult::new(address, port, Protocol::UDP, byte_transmitted, direction, packet.header.ts))
                                } else {
                                    Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing udp packet".parse().unwrap()))
                                }
@@ -200,7 +187,7 @@ pub mod sniffer {
                                        address = ipv6_header.dest_addr.to_string();
                                        port = tcp_header.dest_port;
                                    }
-                                   Ok(PacketResult::new(address, port, Protocol::TCP, byte_transmitted, direction))
+                                   Ok(PacketResult::new(address, port, Protocol::TCP, byte_transmitted, direction, packet.header.ts))
                                } else {
                                    Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing tcp packet".parse().unwrap()))
                                }
@@ -231,12 +218,23 @@ pub mod sniffer {
         Error(String)
     }
 
+    impl Display for Status {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+            match self {
+                Status::Running  => write!(f, "Running"),
+                Status::Idle  => write!(f, "Idle"),
+                Status::Waiting  => write!(f, "Waiting"),
+                Status::Error(e)  => write!(f, "{}", e),
+            }
+        }
+    }
+
     pub struct Sniffer {
-        device: Option<pcap::Device>,
+        device: Option<Device>,
         status: Arc<(Mutex<Status>, Condvar)>,
         file: Option<String>,
         time_interval: u64,
-        hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction)>>>,
+        hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>>,
     }
 
     impl Sniffer {
@@ -255,9 +253,7 @@ pub mod sniffer {
             self.time_interval
         }
 
-        pub fn set_time_interval(&mut self, time_interval: u64) {
-            self.time_interval = time_interval;
-        }
+        pub fn set_time_interval(&mut self, time_interval: u64) { self.time_interval = time_interval; }
 
         pub fn get_status(&self) -> Status {
             let s = self.status.0.lock().unwrap();
@@ -269,11 +265,11 @@ pub mod sniffer {
             *s = status;
         }
 
-        pub fn get_device(&self) -> &Option<pcap::Device> {
+        pub fn get_device(&self) -> &Option<Device> {
             &self.device
         }
 
-        pub fn set_device(&mut self, device: pcap::Device) -> Result<(), NetworkAnalyzerError> {
+        pub fn set_device(&mut self, device: Device) -> Result<(), NetworkAnalyzerError> {
             return match Sniffer::get_all_available_devices() {
                 Ok(devices) => {
                     for dev in &devices {
@@ -288,7 +284,7 @@ pub mod sniffer {
             }
         }
 
-        pub fn get_hashmap(&self) -> &Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction)>>> {
+        pub fn get_hashmap(&self) -> &Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>> {
             &self.hashmap
         }
 
@@ -303,11 +299,11 @@ pub mod sniffer {
                     self.file = Some(filename);
                     Ok(())
                 },
-                Err(_) => Err(NetworkAnalyzerError::UserError("Error while file creation.".to_string()))
+                Err(_) => Err(NetworkAnalyzerError::UserError("Error during file creation.".to_string()))
             }
         }
 
-        pub fn get_all_available_devices() -> Result<Vec<pcap::Device>, NetworkAnalyzerError> {
+        pub fn get_all_available_devices() -> Result<Vec<Device>, NetworkAnalyzerError> {
             let devices = pcap::Device::list();
             return match devices {
                 Ok(devices) => Ok(devices),
@@ -359,7 +355,7 @@ pub mod sniffer {
 
                     let hashmap = self.get_hashmap().clone();
 
-                    let sender = thread::spawn(move || {
+                    thread::spawn(move || {
                         let cloned_device = device.clone();
                         let mut cap = Capture::from_device(cloned_device.clone()).unwrap().promisc(true).open().unwrap();
                         let mut status = tuple.0.lock().unwrap();
@@ -376,12 +372,13 @@ pub mod sniffer {
                                                     match existing_pkt {
                                                         None => {
                                                             hm.insert((info.get_address(), info.get_port()),
-                                                                      (info.get_protocol(), info.get_byte_transmitted(), info.get_direction()));
+                                                                      (info.get_protocol(), info.get_byte_transmitted(), info.get_direction(), info.get_timestamp(), info.get_timestamp()));
                                                         },
                                                         value => {
                                                             let bytes = info.get_byte_transmitted() + value.unwrap().clone().1;
+                                                            let start = value.unwrap().3;
                                                             hm.insert((info.get_address(), info.get_port()),
-                                                                      (info.get_protocol(), bytes, info.get_direction()));
+                                                                      (info.get_protocol(), bytes, info.get_direction(), start, info.get_timestamp()));
                                                         }
                                                     }
                                                 },
@@ -396,10 +393,10 @@ pub mod sniffer {
                                 Status::Waiting => {
                                     status = tuple.1.wait_while(status, |status| { *status == Status::Waiting }).unwrap();
                                 },
-                                Status::Idle => { break; }
+                                Status::Idle => { println!("Sniffing process finished."); break; }
                                 Status::Error(_) => { println!("Unexpected Error."); break; }
                             }
-                            thread::sleep(Duration::from_millis(1));
+                            thread::sleep(Duration::from_millis(10));
                         };
                     });
 
@@ -409,25 +406,27 @@ pub mod sniffer {
             }
         }
 
-
         //run with interval TODO
 
         fn print_title(device: &Device) -> String {
-            let mut string = "Device sniffed: ".to_string();
-            string.push_str(device.name.as_str());
-            string.push_str("\nAddresses: ");
-            device.addresses.iter().for_each(|a| {
-                string.push_str("\n\t- ");
-                string.push_str(a.addr.to_string().as_str());
-            });
-            return string
+            let mut title = "Device name: ".to_string();
+            title.push_str(device.name.as_str());
+            title.push_str("\nAddresses: ");
+            let ipv4Addr = device.addresses[0].clone();
+            let ipv6Addr = device.addresses[1].clone();
+            title.push_str("\n\t Ipv4: ");
+            title.push_str(ipv4Addr.addr.to_string().as_str());
+            title.push_str("\n\t Ipv6: ");
+            title.push_str(ipv6Addr.addr.to_string().as_str());
+            return title
         }
 
-        fn print_table(hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction)>>>) -> String {
-            let mut res = "Scanning: \n\t- Timestamp: ".to_string();
+        fn print_table(hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>>) -> String {
+            let mut res = "\n\t Timestamp: ".to_string();
             res.push_str(Local::now().to_string().as_str());
+            res.push_str("\n");
             let mut table = Table::new();
-            table.add_row(row!["IP Address", "Port", "Protocol", "Bytes Transmitted", "Direction"]);
+            table.add_row(row!["IP Address", "Port", "Protocol", "Bytes Transmitted", "Direction", "Start", "End"]);
             let hm = hashmap.clone();
             for (key, value) in hm.lock().unwrap().iter() {
                 table.add_row(Row::new(vec![
@@ -435,16 +434,18 @@ pub mod sniffer {
                     Cell::new(key.1.to_string().as_str()),
                     Cell::new(value.0.to_string().as_str()),
                     Cell::new(value.1.to_string().as_str()),
-                    Cell::new(value.2.to_string().as_str())
+                    Cell::new(value.2.to_string().as_str()),
+                    Cell::new(value.3.to_string().as_str()),
+                    Cell::new(value.4.to_string().as_str())
                 ]));
             }
-            res.push_str("\n");
             res.push_str(table.to_string().as_str());
             return res
         }
 
         pub fn generate_report(&self) -> Result<String, NetworkAnalyzerError> {
-            let status = self.get_status();
+            //let status = self.get_status(); TODO il problema è qui
+            let status = Running; //TODO inserito giusto per poter fare delle prove sul resto
             match &status {
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
                 Status::Idle => { Err(NetworkAnalyzerError::UserWarning("The process is already stopped.".to_string())) },
@@ -452,16 +453,18 @@ pub mod sniffer {
                     if self.get_file().is_none() {
                         Err(NetworkAnalyzerError::UserError("The file name is blank.".to_string()))
                     } else {
+                        println!("PROVA GENERAZIONE P.1");
                         let write;
                         let body;
                         if self.get_time_interval() == 0 {
+                            println!("PROVA GENERAZIONE P.2");
                             let mut file = match OpenOptions::new().write(true).open(self.get_file().unwrap()) {
                                 Ok(file) => file,
-                                Err(_) => return Err(NetworkAnalyzerError::UserError("Cannot open the file.".to_string()))
+                                Err(_) => return Err(NetworkAnalyzerError::UserError("Cannot open file.".to_string()))
                             };
                             match file.rewind() { //porta la testina all'inizio del file
                                 Ok(_) => (),
-                                Err(_) =>  return Err(NetworkAnalyzerError::UserError("Requind operation goes wrong.".to_string()))
+                                Err(_) =>  return Err(NetworkAnalyzerError::UserError("Error during rewind operation.".to_string()))
                             };
 
                             let mut title = Sniffer::print_title(&self.device.as_ref().unwrap().clone());
@@ -470,6 +473,7 @@ pub mod sniffer {
 
                             write = file.write(title.as_bytes());
                         } else {
+                            println!("PROVA GENERAZIONE P.2 - CON INTERVAL");
                             let mut file = match OpenOptions::new().append(true).open(self.get_file().unwrap()) {
                                 Ok(file) => file,
                                 Err(_) => return Err(NetworkAnalyzerError::UserError("Cannot open the file.".to_string()))
@@ -481,7 +485,8 @@ pub mod sniffer {
                         return match write {
                             Ok(_) => {
                                 self.set_status(Status::Idle);
-                                Ok("The report has been saved and the scanning has been stopped.".to_string())
+                                println!("STATUS IDLE SET");
+                                Ok("The report was saved and the scanning is stopped.".to_string())
                             },
                             Err(error) => Err(NetworkAnalyzerError::UserError(error.to_string()))
                         }
@@ -489,8 +494,6 @@ pub mod sniffer {
                 },
             }
         }
-
     }
-
 
     }

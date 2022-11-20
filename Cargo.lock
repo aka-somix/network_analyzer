@@ -334,6 +334,7 @@ name = "network_analyzer"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "libc",
  "pcap",
  "pktparse",
  "prettytable-rs",
