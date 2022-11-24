@@ -8,7 +8,7 @@ fn main() {
         sniffer.set_device(device);
         sniffer.set_file("report.txt".to_string());
         sniffer.run();
-        thread::sleep(Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(20));
         sniffer.generate_report();
         println!("Finish");
 

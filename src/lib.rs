@@ -359,9 +359,10 @@ pub mod sniffer {
                     thread::spawn(move || {
                         let cloned_device = device.clone();
                         let mut cap = Capture::from_device(cloned_device.clone()).unwrap().promisc(true).open().unwrap();
-                        let mut status = tuple.0.lock().unwrap();
+                        //let mut status = tuple.0.lock().unwrap();
 
                         loop {
+                            let mut status = tuple.0.lock().unwrap();
                             match *status {
                                 Status::Running => {
                                     match cap.next_packet() {
@@ -398,6 +399,7 @@ pub mod sniffer {
                                 Status::Error(_) => { println!("Unexpected Error."); break; }
                             }
                             thread::sleep(Duration::from_millis(10));
+                            drop(status);
                         };
                     });
 
@@ -461,8 +463,8 @@ pub mod sniffer {
 
         //generate txt and csv files
         pub fn generate_report(&self) -> Result<String, NetworkAnalyzerError> {
-            //let status = self.get_status(); TODO QUI
-            let status = Status::Running; //TODO inserito giusto per poter fare delle prove sul resto
+            let status = self.get_status(); //TODO QUI
+            //let status = Status::Running; //TODO inserito giusto per poter fare delle prove sul resto
             match &status {
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
                 Status::Idle => { Err(NetworkAnalyzerError::UserWarning("The process is already stopped.".to_string())) },
