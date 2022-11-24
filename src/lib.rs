@@ -95,13 +95,13 @@ pub mod sniffer {
     }
 
     fn get_direction_ipv4(header: IPv4Header, device: Device) -> Direction {
-        if device.addresses.iter().any(|a| a.addr.to_string() == header.dest_addr.to_string()) {
+        if device.addresses.iter().any(|a| a.addr.to_string() == header.source_addr.to_string()) {
             Direction::Transmitted
         } else { Direction::Received }
     }
 
     fn  get_direction_ipv6(header: IPv6Header, device: Device) -> Direction {
-        if device.addresses.iter().any(|a| a.addr.to_string() == header.dest_addr.to_string()) {
+        if device.addresses.iter().any(|a| a.addr.to_string() == header.source_addr.to_string()) {
             Direction::Transmitted
         } else { Direction::Received }
     }
@@ -116,7 +116,7 @@ pub mod sniffer {
                       match ipv4_header.protocol {
                           IPProtocol::UDP => {
                               if let Ok((remainingUDP, udp_header)) = parse_udp_header(remainingIp) {
-                                  let byte_transmitted = 5;
+                                  let byte_transmitted = remainingUDP.len();
                                   let address;
                                   let port;
                                   if direction == Direction::Received {
@@ -133,7 +133,7 @@ pub mod sniffer {
                           },
                           IPProtocol::TCP => {
                               if let Ok((remainingTCP, tcp_header)) = parse_tcp_header(remainingIp) {
-                                  let byte_transmitted = 5;
+                                  let byte_transmitted = remainingTCP.len();
                                   let address;
                                   let port;
                                   if direction == Direction::Received {
@@ -161,7 +161,7 @@ pub mod sniffer {
                        match ipv6_header.next_header {
                            IPProtocol::UDP => {
                                if let Ok((remainingUDP, udp_header)) = parse_udp_header(remainingIp) {
-                                   let byte_transmitted = 5;
+                                   let byte_transmitted = remainingUDP.len();
                                    let address;
                                    let port;
                                    if direction == Direction::Received {
@@ -178,7 +178,7 @@ pub mod sniffer {
                            },
                            IPProtocol::TCP => {
                                if let Ok((remainingTCP, tcp_header)) = parse_tcp_header(remainingIp) {
-                                   let byte_transmitted = 5;
+                                   let byte_transmitted = remainingTCP.len();
                                    let address;
                                    let port;
                                    if direction == Direction::Received {
@@ -406,7 +406,7 @@ pub mod sniffer {
                     //TODO QUI
                     /*
                     thread::spawn(move || {
-                        if self.get_time_interval() == 0 {
+                        if self.get_time_interval() != 0 {
                             thread::sleep(Duration::from_secs(self.get_time_interval()));
                             let mut status = tuple.0.lock().unwrap();
                             match *status {
@@ -463,8 +463,7 @@ pub mod sniffer {
 
         //generate txt and csv files
         pub fn generate_report(&self) -> Result<String, NetworkAnalyzerError> {
-            let status = self.get_status(); //TODO QUI
-            //let status = Status::Running; //TODO inserito giusto per poter fare delle prove sul resto
+            let status = self.get_status();
             match &status {
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
                 Status::Idle => { Err(NetworkAnalyzerError::UserWarning("The process is already stopped.".to_string())) },
@@ -506,8 +505,8 @@ pub mod sniffer {
                              */
                         return match write {
                             Ok(_) => {
-                                Sniffer::generate_csv(self.get_hashmap().clone());
-                                self.set_status(Status::Idle); //TODO QUI TU DICI CHE CONVIENE METTERLO QUA O ALL'INIZIO QUANDO INIZIA A GENERARE I REPORT?
+                                //Sniffer::generate_csv(self.get_hashmap().clone());
+                                self.set_status(Status::Idle);
                                 println!("STATUS IDLE SET");
                                 Ok("The report was saved and the scanning is stopped.".to_string())
                             },
