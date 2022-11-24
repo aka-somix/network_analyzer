@@ -78,12 +78,13 @@ pub mod sniffer {
         protocol: Protocol,
         byte_transmitted: usize,
         direction: Direction,
-        timestamp: u64
+        sec: i64,
+        usec: i64
     }
 
     impl PacketResult {
         pub fn new(address: String, port: u16, protocol: Protocol, byte_transmitted: usize, direction : Direction, ts: libc::timeval) -> Self {
-            PacketResult { address, port, protocol, byte_transmitted, direction, timestamp: {(ts.tv_sec as u64) * 1000000 + (ts.tv_usec as u64)} }
+            PacketResult { address, port, protocol, byte_transmitted, direction, sec: ts.tv_sec as i64, usec: ts.tv_usec as i64 }
         }
 
         pub fn get_address(&self) -> String { return self.address.clone() }
@@ -91,7 +92,8 @@ pub mod sniffer {
         pub fn get_protocol(&self) -> Protocol { return self.protocol.clone() }
         pub fn get_byte_transmitted(&self) -> usize { return self.byte_transmitted }
         pub fn get_direction(&self) -> Direction { return self.direction.clone() }
-        pub fn get_timestamp(&self) -> u64 {return self.timestamp }
+        pub fn get_sec(&self) -> i64 {return self.sec }
+        pub fn get_usec(&self) -> i64 {return self.usec }
     }
 
     fn get_direction_ipv4(header: IPv4Header, device: Device) -> Direction {
@@ -235,7 +237,7 @@ pub mod sniffer {
         status: Arc<(Mutex<Status>, Condvar)>,
         file: Option<String>,
         time_interval: u64,
-        hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>>,
+        hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, String, String)>>>,
     }
 
     impl Sniffer {
@@ -285,7 +287,7 @@ pub mod sniffer {
             }
         }
 
-        pub fn get_hashmap(&self) -> &Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>> {
+        pub fn get_hashmap(&self) -> &Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, String, String)>>> {
             &self.hashmap
         }
 
@@ -373,14 +375,16 @@ pub mod sniffer {
                                                     let existing_pkt = hm.get(&(info.get_address(), info.get_port()));
                                                     match existing_pkt {
                                                         None => {
+                                                            let timestamp = Local.timestamp_opt(info.get_sec(), info.get_usec() as u32).unwrap().format("%H:%M:%S .%f");
                                                             hm.insert((info.get_address(), info.get_port()),
-                                                                      (info.get_protocol(), info.get_byte_transmitted(), info.get_direction(), info.get_timestamp(), info.get_timestamp()));
+                                                                      (info.get_protocol(), info.get_byte_transmitted(), info.get_direction(), timestamp.to_string(), timestamp.to_string()));
                                                         },
                                                         value => {
+                                                            let last = Local.timestamp_opt(info.get_sec(), info.get_usec() as u32).unwrap().format("%H:%M:%S .%f");
                                                             let bytes = info.get_byte_transmitted() + value.unwrap().clone().1;
-                                                            let start = value.unwrap().3;
+                                                            let start = value.unwrap().3.to_string();
                                                             hm.insert((info.get_address(), info.get_port()),
-                                                                      (info.get_protocol(), bytes, info.get_direction(), start, info.get_timestamp()));
+                                                                      (info.get_protocol(), bytes, info.get_direction(), start, last.to_string()));
                                                         }
                                                     }
                                                 },
@@ -439,7 +443,7 @@ pub mod sniffer {
             return title
         }
 
-        fn print_table(hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>>) -> String {
+        fn print_table(hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, String, String)>>>) -> String {
             let mut res = "\n\t Timestamp: ".to_string();
             res.push_str(Local::now().to_string().as_str());
             res.push_str("\n");
@@ -453,8 +457,8 @@ pub mod sniffer {
                     Cell::new(value.0.to_string().as_str()),
                     Cell::new(value.1.to_string().as_str()),
                     Cell::new(value.2.to_string().as_str()),
-                    Cell::new(value.3.to_string().as_str()),
-                    Cell::new(value.4.to_string().as_str())
+                    Cell::new(value.3.as_str()),
+                    Cell::new(value.4.as_str())
                 ]));
             }
             res.push_str(table.to_string().as_str());
