@@ -371,6 +371,7 @@ pub mod sniffer {
                     let hashmap = self.get_hashmap().clone();
 
                     thread::spawn(move || {
+                        println!("RUN THREAD START");
                         let cloned_device = device.clone();
                         let mut cap = Capture::from_device(cloned_device.clone()).unwrap().promisc(true).open().unwrap();
 
@@ -430,11 +431,11 @@ pub mod sniffer {
             }
         }
 
-        pub fn run_with_interval(&self) -> () {
+        pub fn run_with_interval(&self) -> Result<(), NetworkAnalyzerError> {
             let interval = self.get_time_interval();
             let tuple = Arc::clone(&self.status.clone());
             if interval != 0 {
-                println!("Time interval set");
+                println!("RUN WITH INTERVAL THREAD STARTED");
                 thread::spawn(move || {
                     thread::sleep(Duration::from_secs(interval));
                     let mut status = tuple.0.lock().unwrap();
@@ -442,15 +443,19 @@ pub mod sniffer {
                         Status::Idle => {
                             println!("Sniffing process already stopped.")
                         }
-                        _ => {
+                        Status::Running => {
                             *status = Status::Idle;
                             tuple.1.notify_all();
                             println!("Sniffing process stopped.")
                         }
+                        _ => {
+                        }
                     }
                 });
+                Ok(())
             } else {
                 println!("Missing time interval");
+                Err(NetworkAnalyzerError::UserError("Missing time interval".to_string()))
             }
         }
 
@@ -489,12 +494,13 @@ pub mod sniffer {
             return res
         }
 
-        //generate txt and csv files
+        ///OLD VERSION
+        /*
         pub fn generate_report(&self) -> Result<String, NetworkAnalyzerError> {
             let status = self.get_status();
             match &status {
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
-                Status::Idle => { Err(NetworkAnalyzerError::UserWarning("The process is already stopped.".to_string())) }, //TODO probabilmente da togliere
+                Status::Idle => { Err(NetworkAnalyzerError::UserWarning("The process is already stopped.".to_string())) },
                 _ => {
                     if self.get_file().is_none() {
                         Err(NetworkAnalyzerError::UserError("The file name is blank.".to_string()))
@@ -530,6 +536,63 @@ pub mod sniffer {
                 },
             }
         }
+         */
+
+        pub fn generate_report(&self) -> Result<String, NetworkAnalyzerError> {
+            let fileName = self.get_file();
+            let device = self.get_device().clone().unwrap();
+            let tuple = Arc::clone(&self.status.clone());
+            let hashmap = self.get_hashmap().clone();
+
+            thread::spawn(move || {
+                println!("GENERATE REPORT THREAD STARTED");
+                loop {
+                    let mut status = tuple.0.lock().unwrap();
+                    match *status {
+                        Status::Idle => {
+                            if fileName.is_none() {
+                                return Err(NetworkAnalyzerError::UserError("The file name is blank.".to_string()))
+                            } else {
+                                println!("REPORT GENERATION STARTED");
+                                let write;
+                                let body;
+                                let mut file = match OpenOptions::new().write(true).open(fileName.unwrap()) {
+                                    Ok(file) => file,
+                                    Err(_) => return Err(NetworkAnalyzerError::UserError("Cannot open file.".to_string()))
+                                };
+                                match file.rewind() { //porta la testina all'inizio del file
+                                    Ok(_) => (),
+                                    Err(_) =>  return Err(NetworkAnalyzerError::UserError("Error during rewind operation.".to_string()))
+                                };
+
+                                let mut title = Sniffer::print_title(&device);
+                                body = Sniffer::print_table(hashmap);
+                                title.push_str(body.as_str());
+
+                                write = file.write(title.as_bytes());
+
+                                return match write {
+                                    Ok(_) => {
+                                        //Sniffer::generate_csv(self.get_hashmap().clone());
+                                        println!("Report saved with success.");
+                                        Ok("Report saved with success.".to_string())
+                                    },
+                                    Err(error) => Err(NetworkAnalyzerError::UserError(error.to_string()))
+                                }
+                            }
+                        }
+                        Status::Error(_) => {return Err(NetworkAnalyzerError::UserError("Unexpected error.".to_string()))}
+                        _ => {
+                            println!("SI DORME UN PO'");
+                            status = tuple.1.wait_while(status, |status| { *status != Status::Idle }).unwrap();
+                            println!("BUONGIORNO");
+                        }
+                    }
+                }
+            });
+            Ok("ok".to_string())
+        }
+
         /*
                 pub fn generate_csv(hm: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>>) -> Result<(), Box<dyn Error>> {
                     println!("ciao");
