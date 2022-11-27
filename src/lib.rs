@@ -37,10 +37,10 @@ pub mod sniffer {
     impl Display for NetworkAnalyzerError {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             match self {
-                NetworkAnalyzerError::PacketDecodeError(e)  => write!(f, "{}", e),
-                NetworkAnalyzerError::UserError(e)  => write!(f, "{}", e),
-                NetworkAnalyzerError::UserWarning(e)  => write!(f, "{}", e),
-                NetworkAnalyzerError::PcapError(e)  => write!(f, "{}", e),
+                NetworkAnalyzerError::PacketDecodeError(e) => write!(f, "{}", e),
+                NetworkAnalyzerError::UserError(e) => write!(f, "{}", e),
+                NetworkAnalyzerError::UserWarning(e) => write!(f, "{}", e),
+                NetworkAnalyzerError::PcapError(e) => write!(f, "{}", e),
             }
         }
     }
@@ -83,7 +83,7 @@ pub mod sniffer {
     }
 
     impl PacketResult {
-        pub fn new(address: String, port: u16, protocol: Protocol, byte_transmitted: usize, direction : Direction, ts: libc::timeval) -> Self {
+        pub fn new(address: String, port: u16, protocol: Protocol, byte_transmitted: usize, direction: Direction, ts: libc::timeval) -> Self {
             PacketResult { address, port, protocol, byte_transmitted, direction, sec: ts.tv_sec as i64, usec: ts.tv_usec as i64 }
         }
 
@@ -92,8 +92,8 @@ pub mod sniffer {
         pub fn get_protocol(&self) -> Protocol { return self.protocol.clone() }
         pub fn get_byte_transmitted(&self) -> usize { return self.byte_transmitted }
         pub fn get_direction(&self) -> Direction { return self.direction.clone() }
-        pub fn get_sec(&self) -> i64 {return self.sec }
-        pub fn get_usec(&self) -> i64 {return self.usec }
+        pub fn get_sec(&self) -> i64 { return self.sec }
+        pub fn get_usec(&self) -> i64 { return self.usec }
     }
 
     fn get_direction_ipv4(header: IPv4Header, device: Device) -> Direction {
@@ -102,110 +102,109 @@ pub mod sniffer {
         } else { Direction::Received }
     }
 
-    fn  get_direction_ipv6(header: IPv6Header, device: Device) -> Direction {
+    fn get_direction_ipv6(header: IPv6Header, device: Device) -> Direction {
         if device.addresses.iter().any(|a| a.addr.to_string() == header.source_addr.to_string()) {
             Direction::Transmitted
         } else { Direction::Received }
     }
 
-    fn extract_info_from_packet(device: Device, packet : Packet) -> Result<PacketResult, NetworkAnalyzerError> {
-       if let Ok((remainingEt, eth_frame)) = ethernet::parse_ethernet_frame(packet.data) {
-           return match eth_frame.ethertype {
-               EtherType::IPv4 => {
+    fn extract_info_from_packet(device: Device, packet: Packet) -> Result<PacketResult, NetworkAnalyzerError> {
+        if let Ok((remainingEt, eth_frame)) = ethernet::parse_ethernet_frame(packet.data) {
+            return match eth_frame.ethertype {
+                EtherType::IPv4 => {
+                    if let Ok((remainingIp, ipv4_header)) = parse_ipv4_header(remainingEt) {
+                        let direction = get_direction_ipv4(ipv4_header.clone(), device.clone());
+                        match ipv4_header.protocol {
+                            IPProtocol::UDP => {
+                                if let Ok((remainingUDP, udp_header)) = parse_udp_header(remainingIp) {
+                                    let byte_transmitted = remainingUDP.len();
+                                    let address;
+                                    let port;
+                                    if direction == Direction::Received {
+                                        address = ipv4_header.source_addr.to_string();
+                                        port = udp_header.source_port;
+                                    } else {
+                                        address = ipv4_header.dest_addr.to_string();
+                                        port = udp_header.dest_port;
+                                    }
+                                    Ok(PacketResult::new(address, port, Protocol::UDP, byte_transmitted, direction, packet.header.ts))
+                                } else {
+                                    Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing udp packet".parse().unwrap()))
+                                }
+                            },
+                            IPProtocol::TCP => {
+                                if let Ok((remainingTCP, tcp_header)) = parse_tcp_header(remainingIp) {
+                                    let byte_transmitted = remainingTCP.len();
+                                    let address;
+                                    let port;
+                                    if direction == Direction::Received {
+                                        address = ipv4_header.source_addr.to_string();
+                                        port = tcp_header.source_port;
+                                    } else {
+                                        address = ipv4_header.dest_addr.to_string();
+                                        port = tcp_header.dest_port;
+                                    }
+                                    Ok(PacketResult::new(address, port, Protocol::TCP, byte_transmitted, direction, packet.header.ts))
+                                } else {
+                                    Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing tcp packet".parse().unwrap()))
+                                }
+                            },
+                            _ => Err(NetworkAnalyzerError::PacketDecodeError("Trasport level protocol not found. Only UDP and TCP are permitted.".parse().unwrap())),
+                        }
+                    } else {
+                        Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing ipv4 packet".parse().unwrap()))
+                    }
+                },
+                EtherType::IPv6 => {
+                    if let Ok((remainingIp, ipv6_header)) = parse_ipv6_header(remainingEt) {
+                        let direction = get_direction_ipv6(ipv6_header.clone(), device.clone());
 
-                  if let Ok((remainingIp, ipv4_header)) = parse_ipv4_header(remainingEt) {
-                      let direction = get_direction_ipv4(ipv4_header.clone(), device.clone());
-                      match ipv4_header.protocol {
-                          IPProtocol::UDP => {
-                              if let Ok((remainingUDP, udp_header)) = parse_udp_header(remainingIp) {
-                                  let byte_transmitted = remainingUDP.len();
-                                  let address;
-                                  let port;
-                                  if direction == Direction::Received {
-                                      address = ipv4_header.source_addr.to_string();
-                                      port = udp_header.source_port;
-                                  } else {
-                                      address = ipv4_header.dest_addr.to_string();
-                                      port = udp_header.dest_port;
-                                  }
-                                  Ok(PacketResult::new(address, port, Protocol::UDP, byte_transmitted, direction, packet.header.ts))
-                              } else {
-                                  Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing udp packet".parse().unwrap()))
-                              }
-                          },
-                          IPProtocol::TCP => {
-                              if let Ok((remainingTCP, tcp_header)) = parse_tcp_header(remainingIp) {
-                                  let byte_transmitted = remainingTCP.len();
-                                  let address;
-                                  let port;
-                                  if direction == Direction::Received {
-                                      address = ipv4_header.source_addr.to_string();
-                                      port = tcp_header.source_port;
-                                  } else {
-                                      address = ipv4_header.dest_addr.to_string();
-                                      port = tcp_header.dest_port;
-                                  }
-                                  Ok(PacketResult::new(address, port, Protocol::TCP, byte_transmitted, direction, packet.header.ts))
-                              } else {
-                                  Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing tcp packet".parse().unwrap()))
-                              }
-                          },
-                          _ => Err(NetworkAnalyzerError::PacketDecodeError("Trasport level protocol not found. Only UDP and TCP are permitted.".parse().unwrap())),
-                      }
-                  } else {
-                      Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing ipv4 packet".parse().unwrap()))
-                  }
-               },
-               EtherType::IPv6 => {
-                   if let Ok((remainingIp, ipv6_header)) = parse_ipv6_header(remainingEt) {
-                       let direction = get_direction_ipv6(ipv6_header.clone(), device.clone());
-
-                       match ipv6_header.next_header {
-                           IPProtocol::UDP => {
-                               if let Ok((remainingUDP, udp_header)) = parse_udp_header(remainingIp) {
-                                   let byte_transmitted = remainingUDP.len();
-                                   let address;
-                                   let port;
-                                   if direction == Direction::Received {
-                                       address = ipv6_header.source_addr.to_string();
-                                       port = udp_header.source_port;
-                                   } else {
-                                       address = ipv6_header.dest_addr.to_string();
-                                       port = udp_header.dest_port;
-                                   }
-                                   Ok(PacketResult::new(address, port, Protocol::UDP, byte_transmitted, direction, packet.header.ts))
-                               } else {
-                                   Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing udp packet".parse().unwrap()))
-                               }
-                           },
-                           IPProtocol::TCP => {
-                               if let Ok((remainingTCP, tcp_header)) = parse_tcp_header(remainingIp) {
-                                   let byte_transmitted = remainingTCP.len();
-                                   let address;
-                                   let port;
-                                   if direction == Direction::Received {
-                                       address = ipv6_header.source_addr.to_string();
-                                       port = tcp_header.source_port;
-                                   } else {
-                                       address = ipv6_header.dest_addr.to_string();
-                                       port = tcp_header.dest_port;
-                                   }
-                                   Ok(PacketResult::new(address, port, Protocol::TCP, byte_transmitted, direction, packet.header.ts))
-                               } else {
-                                   Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing tcp packet".parse().unwrap()))
-                               }
-                           },
-                           _ => Err(NetworkAnalyzerError::PacketDecodeError("Trasport level protocol not found. Only UDP and TCP are permitted.".parse().unwrap())),
-                       }
-                   } else {
-                       Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing ipv6 packet".parse().unwrap()))
-                   }
-               },
-               _ => Err(NetworkAnalyzerError::PacketDecodeError("Ip level protocol not found. Only IPv4 and IPv6 are permitted.".parse().unwrap())),
-           };
-       } else {
-           Err(NetworkAnalyzerError::PacketDecodeError("Level 2 protocol not found. Only Ethernet is permitted.".parse().unwrap()))
-       }
+                        match ipv6_header.next_header {
+                            IPProtocol::UDP => {
+                                if let Ok((remainingUDP, udp_header)) = parse_udp_header(remainingIp) {
+                                    let byte_transmitted = remainingUDP.len();
+                                    let address;
+                                    let port;
+                                    if direction == Direction::Received {
+                                        address = ipv6_header.source_addr.to_string();
+                                        port = udp_header.source_port;
+                                    } else {
+                                        address = ipv6_header.dest_addr.to_string();
+                                        port = udp_header.dest_port;
+                                    }
+                                    Ok(PacketResult::new(address, port, Protocol::UDP, byte_transmitted, direction, packet.header.ts))
+                                } else {
+                                    Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing udp packet".parse().unwrap()))
+                                }
+                            },
+                            IPProtocol::TCP => {
+                                if let Ok((remainingTCP, tcp_header)) = parse_tcp_header(remainingIp) {
+                                    let byte_transmitted = remainingTCP.len();
+                                    let address;
+                                    let port;
+                                    if direction == Direction::Received {
+                                        address = ipv6_header.source_addr.to_string();
+                                        port = tcp_header.source_port;
+                                    } else {
+                                        address = ipv6_header.dest_addr.to_string();
+                                        port = tcp_header.dest_port;
+                                    }
+                                    Ok(PacketResult::new(address, port, Protocol::TCP, byte_transmitted, direction, packet.header.ts))
+                                } else {
+                                    Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing tcp packet".parse().unwrap()))
+                                }
+                            },
+                            _ => Err(NetworkAnalyzerError::PacketDecodeError("Trasport level protocol not found. Only UDP and TCP are permitted.".parse().unwrap())),
+                        }
+                    } else {
+                        Err(NetworkAnalyzerError::PacketDecodeError("Error while parsing ipv6 packet".parse().unwrap()))
+                    }
+                },
+                _ => Err(NetworkAnalyzerError::PacketDecodeError("Ip level protocol not found. Only IPv4 and IPv6 are permitted.".parse().unwrap())),
+            };
+        } else {
+            Err(NetworkAnalyzerError::PacketDecodeError("Level 2 protocol not found. Only Ethernet is permitted.".parse().unwrap()))
+        }
     }
 
     // i diversi stati dell'applicazione
@@ -224,10 +223,10 @@ pub mod sniffer {
     impl Display for Status {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             match self {
-                Status::Running  => write!(f, "Running"),
-                Status::Idle  => write!(f, "Idle"),
-                Status::Waiting  => write!(f, "Waiting"),
-                Status::Error(e)  => write!(f, "{}", e),
+                Status::Running => write!(f, "Running"),
+                Status::Idle => write!(f, "Idle"),
+                Status::Waiting => write!(f, "Waiting"),
+                Status::Error(e) => write!(f, "{}", e),
             }
         }
     }
@@ -241,7 +240,6 @@ pub mod sniffer {
     }
 
     impl Sniffer {
-
         pub fn new() -> Self {
             return Sniffer {
                 device: None,
@@ -327,6 +325,20 @@ pub mod sniffer {
             }
         }
 
+        pub fn stop(&mut self) -> Result<(), NetworkAnalyzerError> {
+            let status = self.get_status();
+            match &status {
+                Status::Running => {
+                    self.set_status(Status::Idle);
+                    self.status.1.notify_all();
+                    Ok(())
+                },
+                Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
+                Status::Idle => { return Err(NetworkAnalyzerError::UserWarning("There is no sniffing process in execution.".to_string())); },
+                Status::Waiting => { return Err(NetworkAnalyzerError::UserWarning("The sniffing process is already stopped.".to_string())); }
+            }
+        }
+
         pub fn restart(&mut self) -> Result<(), NetworkAnalyzerError> {
             let status = self.get_status();
             match &status {
@@ -361,14 +373,13 @@ pub mod sniffer {
                     thread::spawn(move || {
                         let cloned_device = device.clone();
                         let mut cap = Capture::from_device(cloned_device.clone()).unwrap().promisc(true).open().unwrap();
-                        //let mut status = tuple.0.lock().unwrap();
 
                         loop {
                             let mut status = tuple.0.lock().unwrap();
                             match *status {
                                 Status::Running => {
                                     match cap.next_packet() {
-                                        Ok(packet)  => {
+                                        Ok(packet) => {
                                             match extract_info_from_packet(cloned_device.clone(), packet) {
                                                 Ok(info) => {
                                                     let mut hm = hashmap.lock().unwrap();
@@ -399,34 +410,47 @@ pub mod sniffer {
                                 Status::Waiting => {
                                     status = tuple.1.wait_while(status, |status| { *status == Status::Waiting }).unwrap();
                                 },
-                                Status::Idle => { println!("Sniffing process finished."); break; }
-                                Status::Error(_) => { println!("Unexpected Error."); break; }
+                                Status::Idle => {
+                                    println!("Sniffing process finished.");
+                                    break;
+                                }
+                                Status::Error(_) => {
+                                    println!("Unexpected Error.");
+                                    break;
+                                }
                             }
                             thread::sleep(Duration::from_millis(10));
                             drop(status);
                         };
                     });
 
-                    //TODO QUI
-                    /*
-                    thread::spawn(move || {
-                        if self.get_time_interval() != 0 {
-                            thread::sleep(Duration::from_secs(self.get_time_interval()));
-                            let mut status = tuple.0.lock().unwrap();
-                            match *status {
-                                Status::Running => {
-                                    self.set_status(Status::Idle);
-                                }
-                                _ => { println!("Sniffing process already stopped.")
-                                }
-                            }
-                        }
-                    });
-                    */
-
                     Ok(())
                 },
-                _ => {return Err(NetworkAnalyzerError::UserWarning("Another sniffing process is already running.".to_string()))}
+                _ => { return Err(NetworkAnalyzerError::UserWarning("Another sniffing process is already running.".to_string())) }
+            }
+        }
+
+        pub fn run_with_interval(&self) -> () {
+            let interval = self.get_time_interval();
+            let tuple = Arc::clone(&self.status.clone());
+            if interval != 0 {
+                println!("Time interval set");
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_secs(interval));
+                    let mut status = tuple.0.lock().unwrap();
+                    match *status {
+                        Status::Idle => {
+                            println!("Sniffing process already stopped.")
+                        }
+                        _ => {
+                            *status = Status::Idle;
+                            tuple.1.notify_all();
+                            println!("Sniffing process stopped.")
+                        }
+                    }
+                });
+            } else {
+                println!("Missing time interval");
             }
         }
 
@@ -470,7 +494,7 @@ pub mod sniffer {
             let status = self.get_status();
             match &status {
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
-                Status::Idle => { Err(NetworkAnalyzerError::UserWarning("The process is already stopped.".to_string())) },
+                Status::Idle => { Err(NetworkAnalyzerError::UserWarning("The process is already stopped.".to_string())) }, //TODO probabilmente da togliere
                 _ => {
                     if self.get_file().is_none() {
                         Err(NetworkAnalyzerError::UserError("The file name is blank.".to_string()))
@@ -478,7 +502,6 @@ pub mod sniffer {
                         println!("PROVA GENERAZIONE P.1");
                         let write;
                         let body;
-                        //if self.get_time_interval() == 0 {
                         println!("PROVA GENERAZIONE P.2");
                         let mut file = match OpenOptions::new().write(true).open(self.get_file().unwrap()) {
                             Ok(file) => file,
@@ -494,19 +517,6 @@ pub mod sniffer {
                         title.push_str(body.as_str());
 
                         write = file.write(title.as_bytes());
-                        //}
-                            /*
-                        else {
-                            println!("PROVA GENERAZIONE P.2 - CON INTERVAL");
-                            let mut file = match OpenOptions::new().append(true).open(self.get_file().unwrap()) {
-                                Ok(file) => file,
-                                Err(_) => return Err(NetworkAnalyzerError::UserError("Cannot open the file.".to_string()))
-
-                            };
-                            body = Sniffer::print_table(self.get_hashmap().clone());
-                            write = file.write(body.as_bytes());
-                        }
-                             */
                         return match write {
                             Ok(_) => {
                                 //Sniffer::generate_csv(self.get_hashmap().clone());
@@ -520,36 +530,33 @@ pub mod sniffer {
                 },
             }
         }
-
-        pub fn generate_csv(hm: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>>) -> Result<(), Box<dyn Error>> {
-            println!("ciao");
-            let file_path = "report.csv";
-            println!("ciao");
-            let mut wtr = csv::Writer::from_path(file_path)?;
-            for (key, value) in hm.lock().unwrap().iter() {
-                let row = Record {address: key.0.to_string(), port : key.1, protocol: value.0.to_string(),
-                                byte_transmitted : value.1, direction : value.2.to_string(), start : value.3, end : value.4 };
-                /*
-                wtr.write_record(&[key.0.as_str(), key.1.to_string().as_str(), value.0.to_string().as_str(), value.1.to_string().as_str(),
-                    value.2.to_string().as_str(), value.3.to_string().as_str(), value.4.to_string().as_str() ])?;
-                 */
-                wtr.serialize(row)?;
+        /*
+                pub fn generate_csv(hm: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, u64, u64)>>>) -> Result<(), Box<dyn Error>> {
+                    println!("ciao");
+                    let file_path = "report.csv";
+                    println!("ciao");
+                    let mut wtr = csv::Writer::from_path(file_path)?;
+                    for (key, value) in hm.lock().unwrap().iter() {
+                        let row = Record {address: key.0.to_string(), port : key.1, protocol: value.0.to_string(),
+                            byte_transmitted : value.1, direction : value.2.to_string(), start : value.3, end : value.4 };
+                        wtr.serialize(row)?;
+                    }
+                    wtr.flush()?;
+                    Ok(())
+                }
             }
-            wtr.flush()?;
-            Ok(())
-        }
-    }
 
-    #[derive(Serialize)]
-    #[serde(rename_all = "PascalCase")]
-    struct Record {
-        address: String,
-        port: u16,
-        protocol: String,
-        byte_transmitted: usize,
-        direction: String,
-        start: u64,
-        end: u64
+            #[derive(Serialize)]
+            #[serde(rename_all = "PascalCase")]
+            struct Record {
+                address: String,
+                port: u16,
+                protocol: String,
+                byte_transmitted: usize,
+                direction: String,
+                start: u64,
+                end: u64
+            }
+         */
     }
-
-    }
+}

@@ -7,9 +7,11 @@ fn main() {
         let device = Sniffer::get_all_available_devices().unwrap()[5].clone();
         sniffer.set_device(device);
         sniffer.set_file("report.txt".to_string());
+        sniffer.set_time_interval(60);
         sniffer.run();
-        thread::sleep(Duration::from_secs(20));
-        sniffer.generate_report();
-        println!("Finish");
+        sniffer.run_with_interval();
+        thread::sleep(Duration::from_secs(100));
+        sniffer.stop();
+        //println!("Finish");
 
 }
