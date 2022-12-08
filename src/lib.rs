@@ -588,6 +588,7 @@ pub mod sniffer {
                             println!("BUONGIORNO");
                         }
                     }
+                    drop(status);
                 }
             });
             Ok("ok".to_string())
