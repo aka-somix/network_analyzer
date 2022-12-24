@@ -2,14 +2,15 @@
   import { Device } from '../../models/network';
 
   defineProps<{
-    device: Device
+    device: Device,
+    isSelected: boolean
   }>()
 
 
 </script>
 
 <template>
-  <div class="panel">
+  <div class="panel" :class="isSelected ? 'selected' : ''">
     
     <img src="../../assets/device.png" alt="Device" />
     
@@ -25,7 +26,7 @@
 
 <style scoped>
   .panel {
-    height: 16vh;
+    height: 13vh;
     width: 80vw;
     margin: .2rem;
 
@@ -34,7 +35,13 @@
 
     display: grid;
     grid-template-columns: 20vw 30vw 30vw;
+    grid-template-rows: 13vh;
     column-gap: 1vw;
+  }
+
+  .selected {
+    border: 2px solid #FFC300;
+    color: #FFC300
   }
 
   .panel:hover {
@@ -42,7 +49,7 @@
   }
 
   img {
-    width: 10vw;
+    width: 8vw;
     justify-self: center;
     align-self: center;
   }
@@ -50,6 +57,7 @@
   .device-name {
     justify-self: left;
     align-self: center;
+    margin: 0;
   }
 
   .addresses {

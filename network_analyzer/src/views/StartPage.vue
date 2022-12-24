@@ -12,7 +12,7 @@
     <PulsingLogo class="pulsing-logo" />
 
     <p class=description>
-      A simple Network Sniffer powered by <a>Tauri</a>⚡. Embrace the power of <a>Rust</a> while
+      A simple Network Sniffer powered by <a>Tauri</a>⚡. Embrace the power of <a>Rust</a>⚙️ while
       keeping a fresh look with <a>Vue.js</a> 😼.
     </p>
 

@@ -1,27 +1,35 @@
 <script setup lang="ts">
-  import { ref, Ref } from 'vue'
-  import DevicePanel from '../components/DeviceSelection/DevicePanel.vue';
+  import { ref, onMounted, Ref } from 'vue'
+  import DeviceEntry from '../components/DeviceSelection/DeviceEntry.vue';
   
   import { Device } from '../models/network';
+  import {TauriAPI} from '../api';
 
-  // TODO This is a mock. Replace with real data
-  const devices: Ref<Device[]> = ref([
-    {
-      name: 'Device 1',
-      ipv4Address: "10.10.0.1",
-      netmask: "255.255.255.0",
-    },
-    {
-      name: 'Device 2',
-      ipv4Address: "10.10.0.2",
-      netmask: "255.255.255.0",
-    },
-    {
-      name: 'Device 3',
-      ipv4Address: "10.10.0.2",
-      netmask: "255.255.255.0",
-    },
-  ]);
+  /*
+   * REFS
+   */
+
+  const devices: Ref<Device[]> = ref([]);
+
+  const selectedDevice:Ref<Device | null> = ref(null);
+
+  // HOOKS
+  onMounted(async () => {
+    devices.value = await TauriAPI.getAllDevices();
+  })
+  
+  /*
+   * METHODS
+   */
+
+  function isSelected (device: Device): boolean {
+    if (selectedDevice.value === null) return false;
+    return selectedDevice.value.name === device.name;
+  }
+
+  function canProceed(): boolean {
+    return (selectedDevice.value !== null);
+  }
 
 </script>
 
@@ -31,21 +39,89 @@
 
     <!-- DEVICES -->
     <div class="devices-panel">
-    
-      <DevicePanel 
+      <div v-if="devices.length === 0" class="no-device">
+        Could Not Find any Device 😿
+      </div>
+      <DeviceEntry
+      class="device"
+      v-else
       v-for="device in devices"
       :device="device"
+      :isSelected="isSelected(device)"
+      @click="()=>selectedDevice=device"
       >
         {{device.name}} | {{device.ipv4Address}}
-      </DevicePanel>
+      </DeviceEntry>
     
     </div>
 
     <!-- BUTTONS -->
 
-    <div>
-
+    <div class="ok-button" :class="canProceed() ? 'clickable' : ''">
+      <h2>GO</h2>
     </div>
 
   </div>
 </template>
+
+<style scoped>
+  h2 {
+    text-align: left;
+    margin: 2rem auto;
+  }
+
+  .devices-panel {
+    height: 50vh;
+    overflow-y: scroll;
+    padding: 2rem;
+    box-shadow: 0px 0px 10px 2px #01101e82;
+    border-radius: 10px;
+
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .devices-panel::-webkit-scrollbar {
+    display: none;
+  }
+
+  .device {
+    margin: 0.5rem auto;
+  }
+
+  .no-device {
+    width: 80vw;
+    margin: 2rem auto;
+    font-size: large;
+    color: #6b798b;
+  }
+
+  .ok-button {
+    width: 9vw;
+    height: 9vw;
+    background-color: #112132;
+    border-radius: 100%;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-items: center;
+    float: right;
+
+    transition: 200ms;
+    box-shadow: 2px 2px 10px 5px #01101e82;
+  }
+
+  .ok-button.clickable {
+    background-color: #FFC300;
+  }
+
+  .ok-button.clickable:hover {
+    transform: scale(1.1);
+    cursor: pointer;
+    box-shadow: 4px 6px 5px 5px #01101e82;
+  }
+
+  .ok-button h2 {
+    margin: auto;
+  }
+
+</style>
