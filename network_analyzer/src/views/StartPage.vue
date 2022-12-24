@@ -2,6 +2,9 @@
 
   import PulsingLogo from '../components/StartPage/PulsingLogo.vue';
   import Button from '../components/common/Button.vue';
+  import { useRouter } from 'vue-router';
+
+  const router = useRouter();
 
 </script>
 
@@ -16,7 +19,7 @@
       keeping a fresh look with <a>Vue.js</a> 😼.
     </p>
 
-    <Button title="Let's Start ⚡" @click="()=>{ this.$router.push('/select-device')}" />
+    <Button title="Let's Start ⚡" @click="()=> router.push('/select-device')" />
 
   </div>
 </template>

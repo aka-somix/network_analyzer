@@ -1,17 +1,17 @@
 <script setup lang="ts">
   import { ref, onMounted, Ref } from 'vue'
   import DeviceEntry from '../components/DeviceSelection/DeviceEntry.vue';
-  
   import { Device } from '../models/network';
   import {TauriAPI} from '../api';
+  import { useRouter } from 'vue-router';
 
   /*
    * REFS
    */
-
   const devices: Ref<Device[]> = ref([]);
-
   const selectedDevice:Ref<Device | null> = ref(null);
+
+  const router = useRouter();
 
   // HOOKS
   onMounted(async () => {
@@ -21,7 +21,6 @@
   /*
    * METHODS
    */
-
   function isSelected (device: Device): boolean {
     if (selectedDevice.value === null) return false;
     return selectedDevice.value.id === device.id;
@@ -29,6 +28,10 @@
 
   function canProceed(): boolean {
     return (selectedDevice.value !== null);
+  }
+
+  function confirmAndGoToRecordPage() {
+    router.push('/record');
   }
 
 </script>
@@ -57,7 +60,12 @@
 
     <!-- BUTTONS -->
 
-    <div class="ok-button" :class="canProceed() ? 'clickable' : ''">
+    <div 
+      class="ok-button" 
+      :class="canProceed() ? 'clickable' : ''"
+
+      @click="confirmAndGoToRecordPage"
+    >
       <h2>GO</h2>
     </div>
 
