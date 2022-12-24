@@ -14,13 +14,13 @@
     
     <img src="../../assets/device.png" alt="Device" />
     
-    <h2 class="device-name">{{device.name}}</h2>
+    <h3 class="device-name">{{device.name}}</h3>
     
     <div class="addresses">
       <h4 class="address">ipv4: <strong>{{device.ipv4Address}}</strong></h4>
       <h4>netmask: <strong>{{device.netmask}}</strong></h4>
     </div>
-  
+
   </div>
 </template>
 

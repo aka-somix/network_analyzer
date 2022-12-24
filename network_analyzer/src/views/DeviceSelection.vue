@@ -24,7 +24,7 @@
 
   function isSelected (device: Device): boolean {
     if (selectedDevice.value === null) return false;
-    return selectedDevice.value.name === device.name;
+    return selectedDevice.value.id === device.id;
   }
 
   function canProceed(): boolean {
