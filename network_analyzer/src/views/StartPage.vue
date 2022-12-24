@@ -1,3 +1,10 @@
+<script setup lang="ts">
+
+  import PulsingLogo from '../components/StartPage/PulsingLogo.vue';
+  import Button from '../components/common/Button.vue';
+
+</script>
+
 <template>
   <div class="start-page">
     <h1 class="title">Network Analyzer</h1>
@@ -5,20 +12,14 @@
     <PulsingLogo class="pulsing-logo" />
 
     <p class=description>
-      Lorem Ipsum non ricordo la formula completa. Qui ci va una descrizione del tool. 
-      <br> Molto carino e funzionale devo dire. 
+      A simple Network Sniffer powered by <a>Tauri</a>⚡. Embrace the power of <a>Rust</a> while
+      keeping a fresh look with <a>Vue.js</a> 😼.
     </p>
 
-    <button>Let's Start!</button>
+    <Button title="Let's Start ⚡" @click="()=>{ this.$router.push('/select-device')}" />
 
   </div>
 </template>
-
-<script setup lang="ts">
-
-  import PulsingLogo from '../components/StartPage/PulsingLogo.vue';
-
-</script>
 
 <style scoped>
   .start-page {
