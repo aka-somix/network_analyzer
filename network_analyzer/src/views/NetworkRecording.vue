@@ -29,17 +29,9 @@
   /*
    * METHODS
    */
-
-  function updateRecordedData() {
+  async function updateRecordedData() {
     console.log(`Updating Data for timer ${timerId.value}`);
-    
-    const randomString = ["Ciao Amanda", "Hello World", "Qualcosa a caso", "Ultima stringa random"];
-
-    const randomIdx = Math.floor(Math.random()*10) % randomString.length;
-
-    console.log(`Random idx ${randomIdx} with associated string ${randomString[randomIdx]}`);
-
-    recordedData.value = randomString[randomIdx];
+    recordedData.value = await BackendAPI.getNetworkData();
   }
 
   function startRecording() {
@@ -106,7 +98,6 @@
     >
       <h3>REC</h3>
     </div>
-    
 
   </div>
 </template>

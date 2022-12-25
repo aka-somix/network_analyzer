@@ -37,4 +37,20 @@ export class BackendAPI {
     }
   }
 
+  static async startOrResumeSniffer(): Promise<void> {
+
+  }
+
+  static async pauseSniffer(): Promise<void> {
+
+  }
+
+  static async getNetworkData(): Promise<string> {
+    const randomString = ["Ciao Amanda", "Hello World", "Qualcosa a caso", "Ultima stringa random"];
+
+    const randomIdx = Math.floor(Math.random()*10) % randomString.length;
+
+    return randomString[randomIdx];
+  }
+
 }
