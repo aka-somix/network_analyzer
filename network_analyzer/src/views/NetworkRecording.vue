@@ -1,19 +1,27 @@
 <script setup lang="ts">
   import { ref, onMounted, Ref } from 'vue'
   import { Device } from '../models/network';
+  import { RecordingStatus } from '../models/commons';
   import {BackendAPI} from '../api';
   import { useRouter } from 'vue-router';
- 
-  import Button from '../components/common/Button.vue';
-  
 
   /*
    * REFS
    */
-  const device: Ref<Device | null> = ref(null);
   const router = useRouter();
 
-  // HOOKS
+  // Current Device to analyze traffic from
+  const device: Ref<Device | null> = ref(null);
+  // Data Recorded
+  const recordedData: Ref<string> = ref("Nothing to see here yet 🤫");
+  // TimerID for the recording
+  const timerId: Ref<number | null> = ref(null); 
+  // Status of the application
+  const status: Ref<RecordingStatus> = ref('IDLE');
+
+  /**
+   * HOOKS
+   */ 
   onMounted(async () => {
     device.value = await BackendAPI.getDevice();
   })
@@ -21,6 +29,49 @@
   /*
    * METHODS
    */
+
+  function updateRecordedData() {
+    console.log(`Updating Data for timer ${timerId.value}`);
+    
+    const randomString = ["Ciao Amanda", "Hello World", "Qualcosa a caso", "Ultima stringa random"];
+
+    const randomIdx = Math.floor(Math.random()*10) % randomString.length;
+
+    console.log(`Random idx ${randomIdx} with associated string ${randomString[randomIdx]}`);
+
+    recordedData.value = randomString[randomIdx];
+  }
+
+  function startRecording() {
+
+    // Prevent multiple timers
+    if (timerId.value !== null) return;
+
+    console.log("Starting a new Recording");
+    // update status
+    status.value = 'REC';
+
+    // Start polling data from backend
+    timerId.value = setInterval(() => {
+      updateRecordedData();
+    }, 1000);
+  }
+
+  function pauseRecording() {
+    // Assert that a timer is actually active
+    if (timerId.value === null) return;
+    
+    // Stop Interval
+
+    // update status
+    status.value = 'IDLE';
+
+    console.log(`Canceling timer ${timerId.value}`);
+    clearInterval(timerId.value);
+    
+    // reset timerId to null
+    timerId.value = null;
+  }
 
 </script>
 
@@ -37,17 +88,21 @@
     </header>
 
     <div class="record-panel">
-      Nothing to see here yet 🤫
+      {{recordedData}}
     </div>
 
     <div 
-      class="circle-button blue clickable" 
+      class="circle-button blue"
+      :class="status === 'REC' ? 'clickable': '' "
+      @click="pauseRecording" 
     >
       <h3>PAUSE</h3>
     </div>
 
     <div 
-      class="circle-button red clickable" 
+      class="circle-button red"
+      :class="status === 'IDLE' ? 'clickable': '' "
+      @click="startRecording" 
     >
       <h3>REC</h3>
     </div>
