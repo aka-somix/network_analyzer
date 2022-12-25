@@ -548,4 +548,10 @@ pub mod sniffer {
             Ok("ok".to_string())
         }
     }
+
+    impl Default for Sniffer {
+        fn default() -> Self {
+            Sniffer::new()
+        }
+    }
 }

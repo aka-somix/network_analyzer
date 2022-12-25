@@ -3,10 +3,9 @@ use std::time::Duration;
 use network_analyzer::sniffer::Sniffer;
 use network_analyzer::frontend_api;
 
+
 fn main() {
     let mut sniffer = Sniffer::new();
-
-    frontend_api::get_all_devices();
 
     let device = Sniffer::get_all_available_devices().unwrap()[5].clone();
     sniffer.set_device(device);
