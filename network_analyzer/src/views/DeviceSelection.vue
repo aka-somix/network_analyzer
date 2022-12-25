@@ -2,7 +2,7 @@
   import { ref, onMounted, Ref } from 'vue'
   import DeviceEntry from '../components/DeviceSelection/DeviceEntry.vue';
   import { Device } from '../models/network';
-  import {TauriAPI} from '../api';
+  import {BackendAPI} from '../api';
   import { useRouter } from 'vue-router';
 
   /*
@@ -15,7 +15,7 @@
 
   // HOOKS
   onMounted(async () => {
-    devices.value = await TauriAPI.getAllDevices();
+    devices.value = await BackendAPI.getAllDevices();
   })
   
   /*
@@ -30,8 +30,22 @@
     return (selectedDevice.value !== null);
   }
 
-  function confirmAndGoToRecordPage() {
-    router.push('/record');
+  async function confirmAndGoToRecordPage() {
+    
+    // Do nothing if no device is selected
+    if (!selectedDevice.value) return;
+
+    // Try to Set the device on the backend side
+    try {
+      await BackendAPI.setDevice(selectedDevice.value.id);
+      
+      // If Successfull go ahead to record page
+      router.push('/record');
+    }
+    catch (error) {
+      // TODO Show error to frontend
+      console.error(error);
+    }
   }
 
 </script>

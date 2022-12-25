@@ -1,4 +1,4 @@
-export interface FrontendDevice {
+export interface BackendDevice {
   id: string,
   name: string,
   ipv4_addr: string,
