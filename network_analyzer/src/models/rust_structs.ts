@@ -4,3 +4,13 @@ export interface BackendDevice {
   ipv4_addr: string,
   netmask: string
 }
+
+export interface BackendPacket {
+    address: string,
+    port: string,
+    protocol: string,
+    bytes_tx: string,
+    direction: string,
+    start: string,
+    end: string,
+}

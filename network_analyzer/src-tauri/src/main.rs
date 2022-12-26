@@ -12,6 +12,9 @@ fn main() {
       frontend_api::get_all_devices, 
       frontend_api::set_device,
       frontend_api::get_device,
+      frontend_api::start_sniffer,
+      frontend_api::stop_sniffer,
+      frontend_api::get_sniffed_data,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

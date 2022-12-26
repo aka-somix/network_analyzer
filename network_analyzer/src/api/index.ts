@@ -1,6 +1,6 @@
 import { Device } from "../models/network";
 import { invoke } from '@tauri-apps/api/tauri'
-import { BackendDevice } from "../models/rust_structs";
+import { BackendDevice, BackendPacket } from "../models/rust_structs";
 
 export class BackendAPI {
 
@@ -38,19 +38,23 @@ export class BackendAPI {
   }
 
   static async startOrResumeSniffer(): Promise<void> {
+    const result: String = await invoke('start_sniffer');
 
+    console.log(`Started Sniffer. Backend responded with: ${result}`);
   }
 
   static async pauseSniffer(): Promise<void> {
+    const result: String = await invoke('stop_sniffer');
 
+    console.log(`Stopped Sniffer. Backend responded with: ${result}`);
   }
 
-  static async getNetworkData(): Promise<string> {
-    const randomString = ["Ciao Amanda", "Hello World", "Qualcosa a caso", "Ultima stringa random"];
+  static async getNetworkData(): Promise<BackendPacket[]> {
+  
+    const result: BackendPacket[] = await invoke('get_sniffed_data');
 
-    const randomIdx = Math.floor(Math.random()*10) % randomString.length;
-
-    return randomString[randomIdx];
+    console.log(`Retrieved Network data sniffed: ${result}`);
+  
+    return result;
   }
-
 }

@@ -1,10 +1,11 @@
 
 pub mod frontend_api {
-  use pcap::Device;
+
+  use pcap::{Device};
   use serde::Serialize;
-  use crate::sniffer::Sniffer;
+  use crate::sniffer::{Sniffer, Status, Protocol, Direction};
   use tauri::State;
-  use std::sync::Mutex;
+  use std::{sync::{Mutex, Arc}, collections::HashMap};
 
   /**
    * TODO: Documentare
@@ -90,6 +91,80 @@ pub mod frontend_api {
       Some(device) => Ok(FrontendDevice::new(device.clone())),
       None => Err(String::from("Error. Could Not find a device associated."))
     }
+  }
+
+  #[tauri::command]
+  pub fn start_sniffer(sniffer: State<SnifferState>) -> Result<String, String> {
+    let mut sniffer = sniffer.0.lock().unwrap();
+
+    if sniffer.get_status() == Status::Idle {
+      match sniffer.run() {
+        Ok(_) => Ok(String::from("OK. Sniffer Started")),
+        Err(_) => Err(String::from("Error while starting sniffer")),
+      }
+    }
+    else if sniffer.get_status() == Status::Waiting {
+      match sniffer.restart() {
+        Ok(_) => Ok(String::from("OK. Sniffer Restarted")),
+        Err(_) => Err(String::from("Error while re-starting sniffer")),
+      }
+    }
+    else {
+      return Err(String::from("Sniffer already running"));
+    }
+  }
+  
+  #[tauri::command]
+  pub fn stop_sniffer(sniffer: State<SnifferState>) -> Result<String, String> {
+    let mut sniffer = sniffer.0.lock().unwrap();
+
+    let result = sniffer.stop();
+
+    match result {
+      Ok(_) => Ok(String::from("OK. Sniffer Stopped.")),
+      Err(_) => Err(String::from("Error. Could not stop the sniffer"))
+    }
+  }
+
+   #[derive(Serialize)]
+  pub struct PacketRecord {
+    address: String,
+    port: String,
+    protocol: String,
+    bytes_tx: String,
+    direction: String,
+    start: String,
+    end: String,
+  }
+
+  fn parse_hashmap(hashmap: Arc<Mutex<HashMap<(String, u16), (Protocol, usize, Direction, String, String)>>>) -> Vec<PacketRecord> {
+      let mut res: Vec<PacketRecord> = vec![];
+      let hm = hashmap.clone();
+
+      for (key, value) in hm.lock().unwrap().iter() {
+        res.push(
+          PacketRecord { 
+            address: key.0.clone(),
+            port: key.1.to_string(), 
+            protocol: value.0.to_string(), 
+            bytes_tx: value.1.to_string(), 
+            direction: value.2.to_string(), 
+            start: value.3.clone(), 
+            end: value.4.clone() 
+        });
+      }
+
+      return res;
+  }
+
+  #[tauri::command]
+  pub fn get_sniffed_data(sniffer: State<SnifferState>) -> Result<Vec<PacketRecord>, String> {
+
+    let sniffer = sniffer.0.lock().unwrap();
+
+    let records = parse_hashmap(sniffer.get_hashmap().to_owned());
+
+    return Ok(records);
   }
 
 }

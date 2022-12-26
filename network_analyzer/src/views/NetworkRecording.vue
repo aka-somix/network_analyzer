@@ -4,6 +4,7 @@
   import { RecordingStatus } from '../models/commons';
   import {BackendAPI} from '../api';
   import { useRouter } from 'vue-router';
+import { BackendPacket } from '../models/rust_structs';
 
   /*
    * REFS
@@ -13,7 +14,7 @@
   // Current Device to analyze traffic from
   const device: Ref<Device | null> = ref(null);
   // Data Recorded
-  const recordedData: Ref<string> = ref("Nothing to see here yet 🤫");
+  const recordedData: Ref<BackendPacket[]> = ref([]);
   // TimerID for the recording
   const timerId: Ref<number | null> = ref(null); 
   // Status of the application
@@ -34,7 +35,7 @@
     recordedData.value = await BackendAPI.getNetworkData();
   }
 
-  function startRecording() {
+  async function startRecording() {
 
     // Prevent multiple timers
     if (timerId.value !== null) return;
@@ -43,13 +44,16 @@
     // update status
     status.value = 'REC';
 
+    // Starting Backend Sniffer
+    await BackendAPI.startOrResumeSniffer();
+
     // Start polling data from backend
     timerId.value = setInterval(() => {
       updateRecordedData();
     }, 1000);
   }
 
-  function pauseRecording() {
+  async function pauseRecording() {
     // Assert that a timer is actually active
     if (timerId.value === null) return;
     
@@ -63,6 +67,12 @@
     
     // reset timerId to null
     timerId.value = null;
+
+    // Starting Backend Sniffer
+    await BackendAPI.pauseSniffer();
+
+    // cleanup recorded data
+    recordedData.value = [];
   }
 
 </script>
@@ -80,7 +90,21 @@
     </header>
 
     <div class="record-panel">
-      {{recordedData}}
+      <p v-if="recordedData.length === 0">
+        "Nothing to see here yet 🤫"
+      </p>
+
+      <div
+        v-else
+        v-for="record in recordedData"
+      >
+        ✨
+        {{record.address}}
+        {{record.port}}
+        {{record.protocol}}
+        {{record.bytes_tx}}
+      </div>
+
     </div>
 
     <div 

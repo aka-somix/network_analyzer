@@ -355,9 +355,6 @@ pub mod sniffer {
             let status = self.get_status();
             return match &status {
                 Status::Idle => {
-                    if self.get_file().is_none() {
-                        return Err(NetworkAnalyzerError::UserError("FileName is blank.".to_string()));
-                    }
                     if self.get_device().is_none() {
                         return Err(NetworkAnalyzerError::UserError("Missing device".to_string()));
                     }
@@ -493,10 +490,14 @@ pub mod sniffer {
         }
 
         pub fn generate_report(&self) -> Result<String, NetworkAnalyzerError> {
-            let file_name = self.get_file();
             let device = self.get_device().clone().unwrap();
             let tuple = Arc::clone(&self.status.clone());
             let hashmap = self.get_hashmap().clone();
+            let file_name = self.get_file();
+            
+            if file_name.is_none() {
+                return Err(NetworkAnalyzerError::UserError("FileName is blank.".to_string()));
+            }
 
             thread::spawn(move || {
                 println!("GENERATE REPORT THREAD STARTED");
@@ -549,6 +550,7 @@ pub mod sniffer {
         }
     }
 
+    
     impl Default for Sniffer {
         fn default() -> Self {
             Sniffer::new()
