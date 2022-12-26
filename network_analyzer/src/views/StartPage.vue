@@ -2,9 +2,8 @@
 
   import PulsingLogo from '../components/StartPage/PulsingLogo.vue';
   import Button from '../components/common/Button.vue';
-  import { useRouter } from 'vue-router';
 
-  const router = useRouter();
+  const emit = defineEmits(['changeView']);
 
 </script>
 
@@ -19,7 +18,7 @@
       keeping a fresh look with <a hfref="https://vuejs.org/">Vue.js</a> 😼.
     </p>
 
-    <Button title="Let's Start ⚡" @click="()=> router.push('/select-device')" />
+    <Button title="Let's Start ⚡" @click="emit('changeView', 1)" />
 
   </div>
 </template>

@@ -3,7 +3,6 @@
   import DeviceEntry from '../components/DeviceSelection/DeviceEntry.vue';
   import { Device } from '../models/network';
   import {BackendAPI} from '../api';
-  import { useRouter } from 'vue-router';
 
   /*
    * REFS
@@ -11,7 +10,8 @@
   const devices: Ref<Device[]> = ref([]);
   const selectedDevice:Ref<Device | null> = ref(null);
 
-  const router = useRouter();
+  const emit = defineEmits(['changeView']);
+
 
   // HOOKS
   onMounted(async () => {
@@ -40,7 +40,7 @@
       await BackendAPI.setDevice(selectedDevice.value.id);
       
       // If Successfull go ahead to record page
-      router.push('/record');
+      emit('changeView', 2);
     }
     catch (error) {
       // TODO Show error to frontend

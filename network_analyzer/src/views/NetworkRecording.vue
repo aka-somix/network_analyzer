@@ -1,10 +1,9 @@
 <script setup lang="ts">
   import { ref, onMounted, Ref } from 'vue'
   import { Device } from '../models/network';
+  import { Packet } from '../models/rust_structs';
   import { RecordingStatus } from '../models/commons';
   import {BackendAPI} from '../api';
-  import { useRouter } from 'vue-router';
-  import { Packet } from '../models/rust_structs';
 
   import PacketEntry from '../components/NetworkRecording/PacketEntry.vue';
 
@@ -12,7 +11,7 @@
   /*
    * REFS
    */
-  const router = useRouter();
+  const emit = defineEmits(['changeView']);
 
   // Current Device to analyze traffic from
   const device: Ref<Device | null> = ref(null);
@@ -86,7 +85,7 @@
       <h2 class="title">Network Analysis</h2>
       <p class="descriptive">
         Listening on: <br/>
-        <a class="clickable" @click="() => router.push('/select-device')">
+        <a class="clickable" @click="emit('changeView', 1)">
           {{device?.name}}
         </a>
       </p>
