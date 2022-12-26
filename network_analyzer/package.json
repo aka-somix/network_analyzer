@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tauri-apps/api": "^1.2.0",
     "vue": "^3.2.45",
-    "vue-router": "4",
-    "@tauri-apps/api": "^1.2.0"
+    "vue-router": "^4.1.6"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.2.2",
