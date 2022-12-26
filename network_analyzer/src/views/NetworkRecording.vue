@@ -4,7 +4,10 @@
   import { RecordingStatus } from '../models/commons';
   import {BackendAPI} from '../api';
   import { useRouter } from 'vue-router';
-import { BackendPacket } from '../models/rust_structs';
+  import { Packet } from '../models/rust_structs';
+
+  import PacketEntry from '../components/NetworkRecording/PacketEntry.vue';
+
 
   /*
    * REFS
@@ -14,7 +17,7 @@ import { BackendPacket } from '../models/rust_structs';
   // Current Device to analyze traffic from
   const device: Ref<Device | null> = ref(null);
   // Data Recorded
-  const recordedData: Ref<BackendPacket[]> = ref([]);
+  const recordedData: Ref<Packet[]> = ref([]);
   // TimerID for the recording
   const timerId: Ref<number | null> = ref(null); 
   // Status of the application
@@ -90,19 +93,19 @@ import { BackendPacket } from '../models/rust_structs';
     </header>
 
     <div class="record-panel">
-      <p v-if="recordedData.length === 0">
-        "Nothing to see here yet 🤫"
-      </p>
-
-      <div
-        v-else
-        v-for="record in recordedData"
-      >
-        ✨
-        {{record.address}}
-        {{record.port}}
-        {{record.protocol}}
-        {{record.bytes_tx}}
+      
+      <PacketEntry :is-header="true" />
+      
+      <div class="record-panel-body">
+        <p v-if="recordedData.length === 0">
+          Nothing to see here yet 🤫
+        </p>
+        <PacketEntry
+          v-else
+          v-for="record in recordedData"
+        
+          :packet="record"
+        />
       </div>
 
     </div>
@@ -147,17 +150,20 @@ import { BackendPacket } from '../models/rust_structs';
   }
 
   .record-panel {
-    height: 50vh;
     width: 80vw;
-    overflow-y: scroll;
-    padding: 2rem;
+    padding: 1rem;
     box-shadow: 0px 0px 10px 2px #01101e82;
     border-radius: 10px;
+  }
 
+  .record-panel-body {
+    height: 45vh;
+    overflow-y: scroll;
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
-  .record-panel::-webkit-scrollbar {
+  
+  .record-panel-body::-webkit-scrollbar {
     display: none;
   }
 

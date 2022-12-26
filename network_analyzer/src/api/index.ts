@@ -1,6 +1,6 @@
 import { Device } from "../models/network";
 import { invoke } from '@tauri-apps/api/tauri'
-import { BackendDevice, BackendPacket } from "../models/rust_structs";
+import { BackendDevice, Packet } from "../models/rust_structs";
 
 export class BackendAPI {
 
@@ -49,9 +49,9 @@ export class BackendAPI {
     console.log(`Stopped Sniffer. Backend responded with: ${result}`);
   }
 
-  static async getNetworkData(): Promise<BackendPacket[]> {
+  static async getNetworkData(): Promise<Packet[]> {
   
-    const result: BackendPacket[] = await invoke('get_sniffed_data');
+    const result: Packet[] = await invoke('get_sniffed_data');
 
     console.log(`Retrieved Network data sniffed: ${result}`);
   

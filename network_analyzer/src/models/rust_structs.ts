@@ -5,7 +5,7 @@ export interface BackendDevice {
   netmask: string
 }
 
-export interface BackendPacket {
+export interface Packet {
     address: string,
     port: string,
     protocol: string,
