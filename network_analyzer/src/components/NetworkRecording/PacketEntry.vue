@@ -53,7 +53,7 @@
 <style scoped>
   .entry {
     display: grid;
-    grid-template-columns: 1.5fr 0.5fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 0.5fr 1fr 0.5fr 1fr 0.5fr 0.5fr;
   }
 
   .entry.record p{

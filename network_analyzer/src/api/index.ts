@@ -44,9 +44,15 @@ export class BackendAPI {
   }
 
   static async pauseSniffer(): Promise<void> {
+    const result: String = await invoke('pause_sniffer');
+
+    console.log(`Success. Backend responded with: ${result}`);
+  }
+
+  static async stopSniffer(): Promise<void> {
     const result: String = await invoke('stop_sniffer');
 
-    console.log(`Stopped Sniffer. Backend responded with: ${result}`);
+    console.log(`Success. Backend responded with: ${result}`); 
   }
 
   static async getNetworkData(): Promise<Packet[]> {

@@ -77,6 +77,14 @@
     recordedData.value = [];
   }
 
+  async function goBackToSelection() {
+    // First Stop Sniffer
+    await BackendAPI.startOrResumeSniffer();
+   
+    // Change view
+    emit('changeView', 1);
+  }
+
 </script>
 
 <template>
@@ -85,7 +93,7 @@
       <h2 class="title">Network Analysis</h2>
       <p class="descriptive">
         Listening on: <br/>
-        <a class="clickable" @click="emit('changeView', 1)">
+        <a class="clickable" @click="goBackToSelection">
           {{device?.name}}
         </a>
       </p>

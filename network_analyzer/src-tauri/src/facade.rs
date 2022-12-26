@@ -126,6 +126,18 @@ pub mod frontend_api {
     }
   }
 
+  #[tauri::command]
+  pub fn pause_sniffer(sniffer: State<SnifferState>) -> Result<String, String> {
+    let mut sniffer = sniffer.0.lock().unwrap();
+
+    let result = sniffer.wait();
+
+    match result {
+      Ok(_) => Ok(String::from("OK. Sniffer Paused.")),
+      Err(_) => Err(String::from("Error. Could not stop the sniffer"))
+    }
+  }
+
    #[derive(Serialize)]
   pub struct PacketRecord {
     address: String,
