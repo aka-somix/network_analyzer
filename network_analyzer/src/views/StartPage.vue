@@ -15,8 +15,8 @@
     <PulsingLogo class="pulsing-logo" />
 
     <p class=description>
-      A simple Network Sniffer powered by <a>Tauri</a>⚡. Embrace the power of <a>Rust</a>⚙️ while
-      keeping a fresh look with <a>Vue.js</a> 😼.
+      A simple Network Sniffer powered by <a href="https://tauri.app">Tauri</a>⚡. Embrace the power of <a href="https://www.rust-lang.org/">Rust</a>⚙️ while
+      keeping a fresh look with <a hfref="https://vuejs.org/">Vue.js</a> 😼.
     </p>
 
     <Button title="Let's Start ⚡" @click="()=> router.push('/select-device')" />
