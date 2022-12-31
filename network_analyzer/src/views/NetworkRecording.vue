@@ -32,6 +32,15 @@
   /*
    * METHODS
    */
+
+  function getDeviceName() {
+    const name = device.value?.name || '';
+    if (name.length < 20) return name;
+    // else
+    return name.slice(0,30).concat('...');
+
+  }
+
   async function updateRecordedData() {
     console.log(`Updating Data for timer ${timerId.value}`);
     recordedData.value = await BackendAPI.getNetworkData();
@@ -62,7 +71,7 @@
     // Stop Interval
 
     // update status
-    status.value = 'IDLE';
+    status.value = 'PAUSED';
 
     console.log(`Canceling timer ${timerId.value}`);
     clearInterval(timerId.value);
@@ -78,8 +87,10 @@
   }
 
   async function goBackToSelection() {
-    // First Stop Sniffer
-    await BackendAPI.startOrResumeSniffer();
+    // First Stop Sniffer if active
+    if (status.value !== 'IDLE'){
+      await BackendAPI.startOrResumeSniffer();
+    }
    
     // Change view
     emit('changeView', 1);
@@ -94,7 +105,7 @@
       <p class="descriptive">
         Listening on: <br/>
         <a class="clickable" @click="goBackToSelection">
-          {{device?.name}}
+          {{getDeviceName()}}
         </a>
       </p>
     </header>
@@ -127,7 +138,7 @@
 
     <div 
       class="circle-button red"
-      :class="status === 'IDLE' ? 'clickable': '' "
+      :class="status !== 'REC' ? 'clickable': '' "
       @click="startRecording" 
     >
       <h3>REC</h3>

@@ -1,1 +1,1 @@
-export type RecordingStatus = 'REC' | 'IDLE';
+export type RecordingStatus = 'IDLE' | 'REC' | 'PAUSED' ;
