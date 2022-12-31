@@ -52,7 +52,7 @@ pub mod frontend_api {
     let frontend_devices: Vec<FrontendDevice> = devices.into_iter()
     .filter(|dev| {
       // Return only running Devices
-      return dev.flags.is_running() && dev.addresses.len() > 0;
+      return dev.flags.is_up() && dev.flags.is_running() && dev.addresses.len() > 0;
     })
     .map(|dev| FrontendDevice::new(dev)).collect();
 
