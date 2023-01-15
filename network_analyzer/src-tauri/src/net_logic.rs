@@ -314,6 +314,7 @@ pub mod sniffer {
             let status = self.get_status();
             match &status {
                 Status::Running => {
+                    println!("Pausing sniffing process");
                     self.set_status(Status::Waiting);
                     Ok(())
                 },
@@ -326,14 +327,14 @@ pub mod sniffer {
         pub fn stop(&mut self) -> Result<(), NetworkAnalyzerError> {
             let status = self.get_status();
             match &status {
-                Status::Running => {
+                Status::Running | Status::Waiting => {
+                    println!("Stopping sniffing process");
                     self.set_status(Status::Idle);
                     self.status.1.notify_all();
                     Ok(())
                 },
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
                 Status::Idle => { return Err(NetworkAnalyzerError::UserWarning("There is no sniffing process in execution.".to_string())); },
-                Status::Waiting => { return Err(NetworkAnalyzerError::UserWarning("The sniffing process is already stopped.".to_string())); }
             }
         }
 
@@ -341,6 +342,7 @@ pub mod sniffer {
             let status = self.get_status();
             match &status {
                 Status::Waiting => {
+                    println!("Restarting sniffing process");
                     self.set_status(Status::Running);
                     self.status.1.notify_all();
                     Ok(())
@@ -404,6 +406,7 @@ pub mod sniffer {
                                     }
                                 },
                                 Status::Waiting => {
+                                    println!("Sniffing process paused");
                                     status = tuple.1.wait_while(status, |status| { *status == Status::Waiting }).unwrap();
                                 },
                                 Status::Idle => {

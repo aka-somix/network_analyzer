@@ -162,7 +162,7 @@ pub mod frontend_api {
 
     let sniffer = sniffer.0.lock().unwrap();
 
-    let records = parse_hashmap(sniffer.get_hashmap().to_owned());
+    let records = parse_hashmap(sniffer.get_hashmap().clone());
 
     return Ok(records);
   }

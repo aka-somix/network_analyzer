@@ -326,14 +326,13 @@ pub mod sniffer {
         pub fn stop(&mut self) -> Result<(), NetworkAnalyzerError> {
             let status = self.get_status();
             match &status {
-                Status::Running => {
+                Status::Running | Status::Waiting => {
                     self.set_status(Status::Idle);
                     self.status.1.notify_all();
                     Ok(())
                 },
                 Status::Error(error) => Err(NetworkAnalyzerError::UserError(error.to_string())),
                 Status::Idle => { return Err(NetworkAnalyzerError::UserWarning("There is no sniffing process in execution.".to_string())); },
-                Status::Waiting => { return Err(NetworkAnalyzerError::UserWarning("The sniffing process is already stopped.".to_string())); }
             }
         }
 

@@ -52,6 +52,7 @@
     width: 8vw;
     justify-self: center;
     align-self: center;
+    filter: invert(1);
   }
 
   .device-name {

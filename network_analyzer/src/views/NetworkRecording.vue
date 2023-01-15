@@ -91,7 +91,7 @@
   async function goBackToSelection() {
     // First Stop Sniffer if active
     if (status.value !== 'IDLE'){
-      await BackendAPI.startOrResumeSniffer();
+      await BackendAPI.stopSniffer();
     }
    
     // Change view
