@@ -17,8 +17,10 @@
   const device: Ref<Device | null> = ref(null);
   // Data Recorded
   const recordedData: Ref<Packet[]> = ref([]);
+  // Path for the report
+  const reportPath: Ref<string> = ref("./report.txt");
   // TimerID for the recording
-  const timerId: Ref<number | null> = ref(null); 
+  const timerId: Ref<NodeJS.Timer | null> = ref(null); 
   // Status of the application
   const status: Ref<RecordingStatus> = ref('IDLE');
 
@@ -96,6 +98,14 @@
     emit('changeView', 1);
   }
 
+  async function generateReport() {
+
+    if (status.value !== 'PAUSED') return;
+
+    // Starting Backend Sniffer
+    await BackendAPI.generateReport(reportPath.value);
+  }
+
 </script>
 
 <template>
@@ -129,11 +139,19 @@
     </div>
 
     <div 
+      class="circle-button brown"
+      :class="status === 'PAUSED' ? 'clickable': '' "
+      @click="generateReport" 
+    >
+      <img src="../assets/download.png" alt="DLOAD" />
+    </div>
+
+    <div 
       class="circle-button blue"
       :class="status === 'REC' ? 'clickable': '' "
       @click="pauseRecording" 
     >
-      <h3>PAUSE</h3>
+      <img src="../assets/pause.png" alt="PAUSE" />
     </div>
 
     <div 
@@ -141,7 +159,7 @@
       :class="status !== 'REC' ? 'clickable': '' "
       @click="startRecording" 
     >
-      <h3>REC</h3>
+      <img src="../assets/record.png" alt="REC" />
     </div>
 
   </div>
@@ -201,17 +219,31 @@
   }
 
   .circle-button.clickable.red {
-    background-color: #ff4400;
+    background-color: #b43000;
   }
 
   .circle-button.clickable.blue {
     background-color: #003566;
   }
 
+  .circle-button.clickable.brown {
+    background-color: #442c11;
+  }
+
   .circle-button.clickable:hover {
     transform: scale(1.1);
     cursor: pointer;
     box-shadow: 4px 6px 5px 5px #01101e82;
+  }
+
+  .circle-button img {
+    width: 40%;
+    margin: auto;
+    filter: invert(0.5);
+  }
+  
+  .circle-button.clickable img {
+    filter: invert(1);
   }
 
   .circle-button h3 {

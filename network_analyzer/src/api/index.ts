@@ -63,4 +63,14 @@ export class BackendAPI {
   
     return result;
   }
+
+  static async generateReport(relativePath: string): Promise<void> {
+  
+    console.log('Generating report');
+
+    await invoke('generate_report', {fileName: relativePath});
+
+    console.log(`Generated report at: ${relativePath}`);
+  
+  }
 }

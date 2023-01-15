@@ -16,6 +16,7 @@ fn main() {
       frontend_api::stop_sniffer,
       frontend_api::pause_sniffer,
       frontend_api::get_sniffed_data,
+      frontend_api::generate_report,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

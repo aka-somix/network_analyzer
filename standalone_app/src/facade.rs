@@ -167,4 +167,15 @@ pub mod frontend_api {
     return Ok(records);
   }
 
+
+  #[tauri::command]
+  pub fn generate_report(file_name: String, sniffer: State<SnifferState>) -> Result<(), String> {
+    let mut sniffer = sniffer.0.lock().unwrap();
+
+    sniffer.set_file(file_name).unwrap();
+    sniffer.generate_report().unwrap();
+
+    return Ok(())
+  }
+
 }
