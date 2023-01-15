@@ -8,16 +8,18 @@ pub mod frontend_api {
   use std::{sync::{Mutex, Arc}, collections::HashMap};
 
   /**
-   * TODO: Documentare
+   * This Struct encapsulates a device that will be sent over 
+   * to frontend. It will only contain data that makes sense to show
+   * to the final user.
    */
   #[derive(Serialize)]
-  pub struct FrontendDevice {
+  pub struct DeviceRecord {
     id: String,
     name: String,
     ipv4_addr: String,
     netmask: String
   }
-  impl FrontendDevice {
+  impl DeviceRecord {
     pub fn new(dev: Device) -> Self {
         
       // Resolve Descriptive Name
@@ -34,7 +36,7 @@ pub mod frontend_api {
         Some(existing_netmask) => netmask = existing_netmask.to_string(),
       }
 
-      return FrontendDevice {
+      return DeviceRecord {
         id: dev.name,
         name,
         ipv4_addr: dev.addresses[0].addr.to_string(),
@@ -46,15 +48,15 @@ pub mod frontend_api {
   pub struct SnifferState(pub Mutex<Sniffer>);
 
   #[tauri::command]
-  pub fn get_all_devices () -> Vec<FrontendDevice> {
+  pub fn get_all_devices () -> Vec<DeviceRecord> {
     let devices = Sniffer::get_all_available_devices().unwrap().clone();
 
-    let frontend_devices: Vec<FrontendDevice> = devices.into_iter()
+    let frontend_devices: Vec<DeviceRecord> = devices.into_iter()
     .filter(|dev| {
       // Return only running Devices
       return dev.flags.is_up() && dev.flags.is_running() && dev.addresses.len() > 0;
     })
-    .map(|dev| FrontendDevice::new(dev)).collect();
+    .map(|dev| DeviceRecord::new(dev)).collect();
 
     return frontend_devices;
   }
@@ -84,11 +86,11 @@ pub mod frontend_api {
   }
 
   #[tauri::command]
-  pub fn get_device(sniffer: State<SnifferState>) -> Result<FrontendDevice, String> {
+  pub fn get_device(sniffer: State<SnifferState>) -> Result<DeviceRecord, String> {
     let sniffer = sniffer.0.lock().unwrap();
     
     match sniffer.get_device() {
-      Some(device) => Ok(FrontendDevice::new(device.clone())),
+      Some(device) => Ok(DeviceRecord::new(device.clone())),
       None => Err(String::from("Error. Could Not find a device associated."))
     }
   }
@@ -138,7 +140,12 @@ pub mod frontend_api {
     }
   }
 
-   #[derive(Serialize)]
+  /**
+   * This Struct encapsulates the Packet details that will be sent over 
+   * to frontend. It will only contain data that makes sense to show
+   * to the final user.
+   */
+  #[derive(Serialize)]
   pub struct PacketRecord {
     address: String,
     port: String,
